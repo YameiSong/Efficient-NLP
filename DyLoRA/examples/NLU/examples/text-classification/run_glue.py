@@ -542,12 +542,16 @@ def main():
     class callback_step(transformers.TrainerCallback):
 
         def on_step_begin(self, args, state, control, model, **kwargs):
+            # --- Select a random rank for the model at the beginning of each step
 
             maximum_rank = model.get_dimension()
 
             # current_rank = model.get_rank()
 
-            # randomly select a rank
+            # --- Randomly select a rank from a uniform distribution
+            # --- To sample from a geometric distribution, use
+            # geometric_dist = torch.distributions.Geometric(p)
+            # new_rank = geometric_dist.sample()
             new_rank = torch.randint(0,maximum_rank,(1,)).item()
             model.set_rank(new_rank, frozen=True)
 
