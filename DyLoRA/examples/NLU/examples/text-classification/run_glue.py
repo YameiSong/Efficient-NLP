@@ -122,12 +122,13 @@ class DataTrainingArguments:
         },
     )
     train_file: Optional[str] = field(
-        default=None, metadata={"help": "A csv or a json file containing the training data."}
+        default=None, metadata={"help": "A csv/json/parquet file containing the training data."}
     )
     validation_file: Optional[str] = field(
-        default=None, metadata={"help": "A csv or a json file containing the validation data."}
+        default=None, metadata={"help": "A csv/json/parquet file containing the validation data."}
     )
-    test_file: Optional[str] = field(default=None, metadata={"help": "A csv or a json file containing the test data."})
+    test_file: Optional[str] = field(default=None, metadata={"help": "A csv/json/parquet file containing the test data."})
+    metric_file: Optional[str] = field(default=None, metadata={"help": "A py file to compute the metric for the task."})
 
     def __post_init__(self):
         if self.task_name is not None:
@@ -291,26 +292,36 @@ def main():
     #
     # In distributed training, the load_dataset function guarantee that only one local process can concurrently
     # download the dataset.
-    if data_args.task_name is not None:
+    if data_args.task_name is not None and data_args.train_file is None:
         # Downloading and loading a dataset from the hub.
         datasets = load_dataset("glue", data_args.task_name)
     else:
         # Loading a dataset from your local files.
         # CSV/JSON training and evaluation files are needed.
-        data_files = {"train": data_args.train_file, "validation": data_args.validation_file}
-
-        # Get the test dataset: you can provide your own CSV/JSON test file (see below)
-        # when you use `do_predict` without specifying a GLUE benchmark task.
-        if training_args.do_predict:
-            if data_args.test_file is not None:
-                train_extension = data_args.train_file.split(".")[-1]
-                test_extension = data_args.test_file.split(".")[-1]
-                assert (
-                    test_extension == train_extension
-                ), "`test_file` should have the same extension (csv or json) as `train_file`."
-                data_files["test"] = data_args.test_file
-            else:
-                raise ValueError("Need either a GLUE task or a test file for `do_predict`.")
+        if data_args.task_name == "mnli":
+            data_files = {
+                "train": data_args.train_file, 
+                "validation_matched": data_args.validation_file,
+                "validation_mismatched": data_args.validation_file.replace("_matched", "_mismatched"),
+            }
+            if training_args.do_predict:
+                if data_args.test_file is not None:
+                    data_files["test_matched"] = data_args.test_file
+                    data_files["test_mismatched"] = data_args.test_file.replace("_matched", "_mismatched")
+        else:
+            data_files = {"train": data_args.train_file, "validation": data_args.validation_file}
+            # Get the test dataset: you can provide your own CSV/JSON test file (see below)
+            # when you use `do_predict` without specifying a GLUE benchmark task.
+            if training_args.do_predict:
+                if data_args.test_file is not None:
+                    train_extension = data_args.train_file.split(".")[-1]
+                    test_extension = data_args.test_file.split(".")[-1]
+                    assert (
+                        test_extension == train_extension
+                    ), "`test_file` should have the same extension (csv or json) as `train_file`."
+                    data_files["test"] = data_args.test_file
+                else:
+                    raise ValueError("Need either a GLUE task or a test file for `do_predict`.")
 
         for key in data_files.keys():
             logger.info(f"load a local file for {key}: {data_files[key]}")
@@ -318,6 +329,9 @@ def main():
         if data_args.train_file.endswith(".csv"):
             # Loading a dataset from local csv files
             datasets = load_dataset("csv", data_files=data_files)
+        elif data_args.train_file.endswith(".parquet"):
+            # Loading a dataset from local parquet files
+            datasets = load_dataset("parquet", data_files=data_files)
         else:
             # Loading a dataset from local json files
             datasets = load_dataset("json", data_files=data_files)
@@ -626,7 +640,7 @@ def main():
             test_datasets.append(datasets["test_mismatched"])
 
         for test_dataset, task in zip(test_datasets, tasks):
-            test_dataset.remove_columns_("label")
+            test_dataset = test_dataset.remove_columns("label")
             # Removing the `label` columns because it contains -1 and Trainer won't like that.
             for rank in range(0,model_args.lora_r):
                 print(f'--> test rank={rank}')
