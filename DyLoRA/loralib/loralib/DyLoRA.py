@@ -69,4 +69,5 @@ class dynamic(nn.Module):
 
         else:
             # at test time, just return the reduced rank inputs
+            # --- self.get_rank()+1: This is why the rank in `run_glue.py` is in the range of [0, maximum_rank).
             return inputs[:,:self.get_rank()+1] * math.sqrt(self.get_dimension()/(self.get_rank()+1)) 

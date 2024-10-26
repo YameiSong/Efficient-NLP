@@ -573,7 +573,11 @@ def main():
             # geometric_dist = torch.distributions.Geometric(p)
             # new_rank = geometric_dist.sample()
             new_rank = torch.randint(0,maximum_rank,(1,)).item()
-            model.set_rank(new_rank, frozen=True)
+            # --- The `frozen` flag is a hyperparameter corresponding to the frozen rank in the DyLoRA class.
+            # In experiments, 
+            # * `frozen = True` -> DyLoRA (Frozen)
+            # * `frozen = False` -> DyLoRA
+            model.set_rank(new_rank, frozen=False)
 
     # Initialize our Trainer
     trainer = Trainer(
