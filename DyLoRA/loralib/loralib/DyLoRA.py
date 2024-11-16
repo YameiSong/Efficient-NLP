@@ -46,13 +46,13 @@ class dynamic(nn.Module):
     def forward(self, inputs, mode: bool = False):
         if self.training or mode:
             if self.frozen:
-                # --- By detaching pr, the gradients for the operations involving pr will 
+                # === By detaching pr, the gradients for the operations involving pr will 
                 # not be computed during backpropagation. This is useful when you want to 
                 # freeze part of the model and prevent it from being updated during training.
-                # --- In the context of the DyLoRA class, when self.frozen is True, it indicates 
+                # === In the context of the DyLoRA class, when self.frozen is True, it indicates 
                 # that the rank is fixed, and the part of the input tensor corresponding to 
                 # the fixed rank should not be updated.
-                # --- Sorts the information content of different ranks: 
+                # === Sorts the information content of different ranks: 
                 # The most informative components are retained in the lower ranks, 
                 # while less informative components are truncated as the rank decreases.
                 pr = inputs[:,:self.get_rank()].detach()
@@ -62,12 +62,12 @@ class dynamic(nn.Module):
                     r = r.unsqueeze(-1)
                 result = torch.cat([pr,r],dim=-1)
 
-                # --- Scales the output by a factor involving the maximum rank and the current rank to adjust the magnitude of the output tensor.
+                # === Scales the output by a factor involving the maximum rank and the current rank to adjust the magnitude of the output tensor.
                 return result * math.sqrt(self.get_dimension()/(self.get_rank()+1)) 
             else:
                 return inputs[:,:self.get_rank()+1] * math.sqrt(self.get_dimension()/(self.get_rank()+1))
 
         else:
             # at test time, just return the reduced rank inputs
-            # --- self.get_rank()+1: This is why the rank in `run_glue.py` is in the range of [0, maximum_rank).
+            # === self.get_rank()+1: This is why the rank in `run_glue.py` is in the range of [0, maximum_rank).
             return inputs[:,:self.get_rank()+1] * math.sqrt(self.get_dimension()/(self.get_rank()+1)) 

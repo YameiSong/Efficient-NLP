@@ -118,7 +118,7 @@ class Linear(nn.Linear, LoRALayer):
             self.lora_A = nn.Parameter(self.weight.new_zeros((r, in_features)))
             self.lora_B = nn.Parameter(self.weight.new_zeros((out_features, r)))
 
-            # --- The dynamic class is used to adjust the rank of the input tensor.
+            # === The dynamic class is used to adjust the rank of the input tensor.
             self.nd_lora_A = dynamic(maximum_rank=self.r)
             self.nd_lora_B = dynamic(maximum_rank=self.r)
 

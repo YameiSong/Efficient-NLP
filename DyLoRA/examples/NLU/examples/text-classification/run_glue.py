@@ -562,22 +562,22 @@ def main():
     class callback_step(transformers.TrainerCallback):
 
         def on_step_begin(self, args, state, control, model, **kwargs):
-            # --- Select a random rank for the model at the beginning of each step
+            # === Select a random rank for the model at the beginning of each step
 
             maximum_rank = model.get_dimension()
 
             # current_rank = model.get_rank()
 
-            # --- Randomly select a rank from a uniform distribution
-            # --- To sample from a geometric distribution, use
+            # === Randomly select a rank from a uniform distribution
+            # === To sample from a geometric distribution, use
             # geometric_dist = torch.distributions.Geometric(p)
             # new_rank = geometric_dist.sample()
             new_rank = torch.randint(0,maximum_rank,(1,)).item()
-            # --- The `frozen` flag is a hyperparameter corresponding to the frozen rank in the DyLoRA class.
+            # === The `frozen` flag is a hyperparameter corresponding to the frozen rank in the DyLoRA class.
             # In experiments, 
             # * `frozen = True` -> DyLoRA (Frozen)
             # * `frozen = False` -> DyLoRA
-            model.set_rank(new_rank, frozen=False)
+            model.set_rank(new_rank, frozen=True)
 
     # Initialize our Trainer
     trainer = Trainer(
@@ -654,6 +654,8 @@ def main():
             # Removing the `label` columns because it contains -1 and Trainer won't like that.
             for rank in range(0,model_args.lora_r):
                 print(f'--> test rank={rank}')
+                # === Why the original code does not set the rank for the test dataset? I think we should add this line.
+                trainer.model.set_rank(rank=rank) # set the test rank
                 predictions = trainer.predict(test_dataset=test_dataset).predictions
                 predictions = np.squeeze(predictions) if is_regression else np.argmax(predictions, axis=1)
 
